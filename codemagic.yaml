@@ -15,15 +15,14 @@ workflows:
           PROJECT_ROOT=$(dirname "$SETTINGS_FILE")
           cd "$PROJECT_ROOT"
           
-          # 3. تحديث رابط Gradle لإصدار 9.3.1 المطلوبة
+          # 3. تحديث إصدار Gradle لـ 9.3.1
           sed -i '' 's/gradle-.*-bin.zip/gradle-9.3.1-bin.zip/g' gradle/wrapper/gradle-wrapper.properties 2>/dev/null || true
-          
-          # 4. تنزيل الجار وتوليد الـ Wrapper المناسب
-          rm -f gradle/wrapper/gradle-wrapper.jar
-          curl -sL https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar 2>/dev/null || true
-          
-          # 5. التثبيت والتسريع والبناء
           gradle wrapper --gradle-version 9.3.1
+          
+          # 4. إنشاء ملف debug.keystore تلقائياً لحل مشكلة التوقيع
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          
+          # 5. البناء النهائي للـ APK
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
