@@ -6,20 +6,21 @@ workflows:
     scripts:
       - name: Extract Zip and Build Native APK
         script: |
-          # 1. ضبط نسخة Java لتناسب مشاريع Google AI Studio
-          JAVA_HOME=$JAVA_HOME_17
-          
-          # 2. فك الضغط
+          # 1. فك ضغط ملف الـ ZIP
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           unzip -o "$ZIP_FILE" -d unzipped_app
           
-          # 3. التوجه لمجلد المشروع
-          GRADLEW_PATH=$(find unzipped_app -name "gradlew" | head -n 1)
-          PROJECT_DIR=$(dirname "$GRADLEW_PATH")
-          cd "$PROJECT_DIR"
+          # 2. التوجه لمجلد المشروع
+          BUILD_FILE=$(find unzipped_app -name "build.gradle.kts" -o -name "build.gradle" | head -n 1)
+          CD_DIR=$(dirname "$BUILD_FILE")
+          cd "$CD_DIR"
           
-          # 4. إعطاء الصلاحيات والبناء
+          # 3. إصلاح واستبدال ملف الـ Wrapper المعطوب
+          rm -rf gradle/wrapper/gradle-wrapper.jar
+          gradle wrapper
+          
+          # 4. البناء الفعلي للـ APK
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
