@@ -1,14 +1,35 @@
 workflows:
-  android-build:
-    name: Build MAFIAZ APK
+  android-workflow:
+    name: Native Android Build
     max_build_duration: 30
     instance_type: mac_mini_m1
     scripts:
-      - name: Set executable permissions for Gradle
+      - name: Extract Zip and Build Native APK
         script: |
+          # 1. البحث عن ملف الـ ZIP وفك ضغطه مع مراعاة المسافات والأقواس في الاسم
+          ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
+          echo "Found ZIP file: $ZIP_FILE"
+          unzip -o "$ZIP_FILE" -d unzipped_app
+          
+          # 2. تجهيز البيئة وتثبيت أداة Capacitor للبناء الـ Native
+          npm install -g @capacitor/cli @capacitor/core @capacitor/android
+          
+          cd unzipped_app
+          
+          # الدخول للمجلد الداخلي لو فك الضغط أخرج مجلد فرعي
+          INNER_DIR=$(find . -mindepth 1 -maxdepth 1 -type d | head -n 1)
+          if [ -n "$INNER_DIR" ]; then
+            cd "$INNER_DIR"
+          fi
+          
+          # 3. إنشاء مشروع أندرويد Native وتجهيز الـ Gradle
+          npx cap init MAFIAZ com.mafiaz.app --web-dir .
+          npx cap add android
+          
+          # 4. بناء الـ APK عبر Gradle الأصلي
+          cd android
           chmod +x gradlew
-      - name: Build Android Debug APK
-        script: |
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
     artifacts:
-      - app/build/outputs/**/*.apk
+      - "**/android/app/build/outputs/apk/release/*.apk"
+
