@@ -6,30 +6,17 @@ workflows:
     scripts:
       - name: Extract Zip and Build Native APK
         script: |
-          # 1. البحث عن ملف الـ ZIP وفك ضغطه مع مراعاة المسافات والأقواس في الاسم
+          # 1. فك ضغط ملف الـ ZIP
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           echo "Found ZIP file: $ZIP_FILE"
           unzip -o "$ZIP_FILE" -d unzipped_app
           
-          # 2. تجهيز البيئة وتثبيت أداة Capacitor للبناء الـ Native
-          npm install -g @capacitor/cli @capacitor/core @capacitor/android
+          # 2. البحث عن المجلد الذي يحتوي على build.gradle.kts
+          BUILD_DIR=$(dirname $(find unzipped_app -name "build.gradle.kts" -o -name "build.gradle" | head -n 1))
+          cd "$BUILD_DIR"
           
-          cd unzipped_app
-          
-          # الدخول للمجلد الداخلي لو فك الضغط أخرج مجلد فرعي
-          INNER_DIR=$(find . -mindepth 1 -maxdepth 1 -type d | head -n 1)
-          if [ -n "$INNER_DIR" ]; then
-            cd "$INNER_DIR"
-          fi
-          
-          # 3. إنشاء مشروع أندرويد Native وتجهيز الـ Gradle
-          npx cap init MAFIAZ com.mafiaz.app --web-dir .
-          npx cap add android
-          
-          # 4. بناء الـ APK عبر Gradle الأصلي
-          cd android
+          # 3. إعطاء صلاحية التشغيل وبناء الـ APK الأصلي
           chmod +x gradlew
           ./gradlew assembleRelease
     artifacts:
-      - "**/android/app/build/outputs/apk/release/*.apk"
-
+      - "**/build/outputs/apk/**/*.apk"
