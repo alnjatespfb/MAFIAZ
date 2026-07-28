@@ -8,19 +8,15 @@ workflows:
         script: |
           # 1. فك ضغط ملف الـ ZIP
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
-          echo "Found ZIP file: $ZIP_FILE"
           unzip -o "$ZIP_FILE" -d unzipped_app
           
-          # 2. التوجه لمجلد المشروع الرئيسي
-          BUILD_FILE=$(find unzipped_app -name "build.gradle.kts" -o -name "build.gradle" | head -n 1)
-          cd $(dirname "$BUILD_FILE")
+          # 2. تحديد المكان الصحيح لملف gradlew
+          GRADLEW_PATH=$(find unzipped_app -name "gradlew" | head -n 1)
+          PROJECT_DIR=$(dirname "$GRADLEW_PATH")
           
-          # 3. التأكد من وجود أداة gradlew وبناء الـ APK
-          if [ ! -f "gradlew" ]; then
-            gradle wrapper
-          fi
-          
+          # 3. التوجه للمجلد وإعطاء الصلاحيات ثم البناء مباشرة
+          cd "$PROJECT_DIR"
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleDebug
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
