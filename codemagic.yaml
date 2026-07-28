@@ -11,11 +11,15 @@ workflows:
           echo "Found ZIP file: $ZIP_FILE"
           unzip -o "$ZIP_FILE" -d unzipped_app
           
-          # 2. البحث عن المجلد الذي يحتوي على build.gradle.kts
-          BUILD_DIR=$(dirname $(find unzipped_app -name "build.gradle.kts" -o -name "build.gradle" | head -n 1))
-          cd "$BUILD_DIR"
+          # 2. التوجه لمجلد المشروع الرئيسي
+          BUILD_FILE=$(find unzipped_app -name "build.gradle.kts" -o -name "build.gradle" | head -n 1)
+          cd $(dirname "$BUILD_FILE")
           
-          # 3. إعطاء صلاحية التشغيل وبناء الـ APK الأصلي
+          # 3. التأكد من وجود أداة gradlew وبناء الـ APK
+          if [ ! -f "gradlew" ]; then
+            gradle wrapper
+          fi
+          
           chmod +x gradlew
           ./gradlew assembleRelease
     artifacts:
