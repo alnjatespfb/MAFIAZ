@@ -1,3 +1,4 @@
+
 workflows:
   android-workflow:
     name: Android Build
@@ -6,9 +7,14 @@ workflows:
     scripts:
       - name: Build Android APK
         script: |
-          GRADLEW_PATH=$(find . -name gradlew -maxdepth 3)
-          cd $(dirname "$GRADLEW_PATH")
+          # الانتقال للمجلد الذي يحتوي على build.gradle.kts
+          BUILD_FILE=$(find . -name build.gradle.kts -o -name build.gradle | head -n 1)
+          cd $(dirname "$BUILD_FILE")
+          
+          # إنشاء نظام Gradle للبناء تلقائياً
+          gradle wrapper
           chmod +x gradlew
           ./gradlew assembleRelease
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
+ 
