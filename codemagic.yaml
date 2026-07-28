@@ -6,7 +6,9 @@ workflows:
     scripts:
       - name: Build Android APK
         script: |
+          GRADLEW_PATH=$(find . -name gradlew -maxdepth 3)
+          cd $(dirname "$GRADLEW_PATH")
           chmod +x gradlew
           ./gradlew assembleRelease
     artifacts:
-      - app/build/outputs/apk/**/*.apk
+      - "**/build/outputs/apk/**/*.apk"
