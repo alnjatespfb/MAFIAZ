@@ -10,17 +10,12 @@ workflows:
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           unzip -o "$ZIP_FILE" -d unzipped_app
           
-          # 2. التوجه لمجلد المشروع
-          BUILD_FILE=$(find unzipped_app -name "build.gradle.kts" -o -name "build.gradle" | head -n 1)
-          CD_DIR=$(dirname "$BUILD_FILE")
-          cd "$CD_DIR"
+          # 2. تحديد المجلد الرئيسي للمشروع بدقة
+          SETTINGS_FILE=$(find unzipped_app -name "settings.gradle.kts" -o -name "settings.gradle" | head -n 1)
+          PROJECT_ROOT=$(dirname "$SETTINGS_FILE")
+          cd "$PROJECT_ROOT"
           
-          # 3. إصلاح واستبدال ملف الـ Wrapper المعطوب
-          rm -rf gradle/wrapper/gradle-wrapper.jar
-          gradle wrapper
-          
-          # 4. البناء الفعلي للـ APK
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          # 3. البناء المباشر باستخدام أداة Gradle الخاصة بالسيرفر
+          gradle assembleDebug
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
