@@ -18,8 +18,14 @@ workflows:
             echo '{}' > "$f"
           done
 
-          PACKAGE_FILE=$(find unzipped_app -maxdepth 3 -name "package.json" | head -n 1)
+          # البحث عن package.json اللي فيه فعلاً سكريبت build، مش أي package.json
+          echo "=== ملفات package.json اللي فيها build script ==="
+          find unzipped_app -not -path "*/node_modules/*" -name "package.json" -exec grep -l '"build"' {} \;
+
+          PACKAGE_FILE=$(find unzipped_app -not -path "*/node_modules/*" -name "package.json" -exec grep -l '"build"' {} \; | head -n 1)
           PROJECT_ROOT=$(dirname "$PACKAGE_FILE")
+          echo "=== المسار المختار ==="
+          echo "$PROJECT_ROOT"
           cd "$PROJECT_ROOT"
 
           npm install
@@ -40,7 +46,6 @@ workflows:
           npx cap add android
           npx cap sync android
 
-          # حل تعارض نسخ Kotlin المكررة
           cat >> android/build.gradle << 'EOF'
 
           allprojects {
