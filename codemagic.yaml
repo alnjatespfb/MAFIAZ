@@ -11,26 +11,27 @@ workflows:
         script: |
           set -e
 
+          # 1. فك ضغط ملف الـ ZIP
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           unzip -o "$ZIP_FILE" -d unzipped_app
 
+          # 2. تصليح كل نسخ firebase-applet-config.json
           find unzipped_app -name "firebase-applet-config.json" | while read -r f; do
             echo '{}' > "$f"
           done
 
-          # البحث عن package.json اللي فيه فعلاً سكريبت build، مش أي package.json
-          echo "=== ملفات package.json اللي فيها build script ==="
-          find unzipped_app -not -path "*/node_modules/*" -name "package.json" -exec grep -l '"build"' {} \;
-
-          PACKAGE_FILE=$(find unzipped_app -not -path "*/node_modules/*" -name "package.json" -exec grep -l '"build"' {} \; | head -n 1)
+          # 3. تحديد المجلد الرئيسي للمشروع
+          PACKAGE_FILE=$(find unzipped_app -maxdepth 3 -name "package.json" | head -n 1)
           PROJECT_ROOT=$(dirname "$PACKAGE_FILE")
           echo "=== المسار المختار ==="
           echo "$PROJECT_ROOT"
           cd "$PROJECT_ROOT"
 
+          # 4. تثبيت المكتبات وبناء موقع الويب
           npm install
           npm run build
 
+          # 5. التأكد إن dist اتعمل
           if [ ! -d "dist" ]; then
             if [ -d "build" ]; then
               cp -r build dist
@@ -40,12 +41,14 @@ workflows:
             fi
           fi
 
+          # 6. تثبيت Capacitor وإضافة منصة أندرويد
           npm install @capacitor/core @capacitor/android
           npm install -D @capacitor/cli
           npx cap init "MyApp" "com.example.myapp" --web-dir=dist
           npx cap add android
           npx cap sync android
 
+          # 7. حل تعارض نسخ Kotlin المكررة
           cat >> android/build.gradle << 'EOF'
 
           allprojects {
@@ -59,9 +62,11 @@ workflows:
           }
           EOF
 
+          # 8. إنشاء ملف debug.keystore
           cd android
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
+          # 9. البناء النهائي للـ APK
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
