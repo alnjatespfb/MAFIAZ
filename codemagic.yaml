@@ -14,7 +14,14 @@ workflows:
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           unzip -o "$ZIP_FILE" -d unzipped_app
 
-          # 2. تحديد المجلد الرئيسي للمشروع
+          # 2. تصليح كل نسخ firebase-applet-config.json الفاضية/التالفة في أي مكان بالمشروع
+          echo "=== البحث عن firebase-applet-config.json وتصليحه ==="
+          find unzipped_app -name "firebase-applet-config.json" | while read -r f; do
+            echo "تصليح: $f"
+            echo '{}' > "$f"
+          done
+
+          # 3. تحديد المجلد الرئيسي للمشروع
           echo "=== كل ملفات package.json الموجودة ==="
           find unzipped_app -maxdepth 3 -name "package.json"
 
@@ -23,14 +30,6 @@ workflows:
           echo "=== المسار المختار للمشروع ==="
           echo "$PROJECT_ROOT"
           cd "$PROJECT_ROOT"
-
-          # 3. إصلاح ملف firebase-applet-config.json الفاضي/التالف قبل الـ build
-          if [ -f "firebase-applet-config.json" ]; then
-            echo "=== تصليح firebase-applet-config.json ==="
-            echo '{}' > firebase-applet-config.json
-          fi
-          # لو الملف موجود في أي مكان تاني جوه المشروع، صلحه برضه
-          find . -maxdepth 3 -name "firebase-applet-config.json" -exec sh -c 'echo "{}" > "$1"' _ {} \;
 
           # 4. تثبيت المكتبات وبناء موقع الويب
           npm install
