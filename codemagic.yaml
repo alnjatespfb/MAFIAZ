@@ -15,81 +15,15 @@ workflows:
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           unzip -o "$ZIP_FILE" -d unzipped_app
 
-          # 2. تصليح كل نسخ firebase-applet-config.json
-          find unzipped_app -name "firebase-applet-config.json" | while read -r f; do
-            echo '{}' > "$f"
+          # 2. طباعة كل ملفات package.json ومحتواها للتشخيص
+          echo "=== كل ملفات package.json وموقعها ومحتواها ==="
+          find unzipped_app -not -path "*/node_modules/*" -name "package.json" | while read -r f; do
+            echo "----- $f -----"
+            cat "$f"
+            echo ""
           done
 
-          # 3. تحديد المجلد الرئيسي الصحيح
-          echo "=== دور على package.json اللي فيه build script ==="
-          PROJECT_ROOT=""
-          while IFS= read -r pkg; do
-            ABS_PATH="$(pwd)/$pkg"
-            HAS_BUILD=$(node -e "
-              const fs = require('fs');
-              try {
-                const content = fs.readFileSync(process.argv[1], 'utf8');
-                const p = JSON.parse(content);
-                console.log(p.scripts && p.scripts.build ? 'yes' : 'no');
-              } catch(e) { console.log('no'); }
-            " "$ABS_PATH")
-            echo "فحص: $pkg -> $HAS_BUILD"
-            if [ "$HAS_BUILD" = "yes" ]; then
-              PROJECT_ROOT=$(dirname "$pkg")
-              break
-            fi
-          done < <(find unzipped_app -not -path "*/node_modules/*" -name "package.json")
-
-          if [ -z "$PROJECT_ROOT" ]; then
-            echo "❌ فشل: لا يوجد أي package.json فيه سكريبت build"
-            exit 1
-          fi
-
-          echo "=== المسار الصحيح المختار ==="
-          echo "$PROJECT_ROOT"
-          cd "$PROJECT_ROOT"
-
-          # 4. تثبيت المكتبات وبناء موقع الويب
-          npm install
-          npm run build
-
-          # 5. التأكد إن dist اتعمل
-          if [ ! -d "dist" ]; then
-            if [ -d "build" ]; then
-              cp -r build dist
-            else
-              echo "❌ فشل: لا يوجد dist ولا build"
-              exit 1
-            fi
-          fi
-
-          # 6. تثبيت Capacitor وإضافة منصة أندرويد
-          npm install @capacitor/core @capacitor/android
-          npm install -D @capacitor/cli
-          npx cap init "MyApp" "com.example.myapp" --web-dir=dist
-          npx cap add android
-          npx cap sync android
-
-          # 7. حل تعارض نسخ Kotlin المكررة
-          cat >> android/build.gradle << 'EOF'
-
-          allprojects {
-              configurations.all {
-                  resolutionStrategy {
-                      force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
-                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24'
-                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24'
-                  }
-              }
-          }
-          EOF
-
-          # 8. إنشاء ملف debug.keystore
-          cd android
-          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-
-          # 9. البناء النهائي للـ APK
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          # نوقف هنا عمدًا عشان نشوف النتيجة فورًا
+          exit 1
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
