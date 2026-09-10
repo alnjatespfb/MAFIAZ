@@ -16,18 +16,23 @@ workflows:
 
           # 2. تحديد المجلد الرئيسي للمشروع
           SETTINGS_FILE=$(find unzipped_app -name "settings.gradle.kts" -o -name "settings.gradle" | head -n 1)
-          echo "=== ملف settings.gradle الموجود ==="
-          echo "$SETTINGS_FILE"
-
           PROJECT_ROOT=$(dirname "$SETTINGS_FILE")
           echo "=== مسار المشروع ==="
           echo "$PROJECT_ROOT"
           cd "$PROJECT_ROOT"
 
-          # 3. إنشاء ملف debug.keystore
+          # 3. التأكد من وجود gradlew، ولو مش موجود نولّده
+          echo "=== محتويات المجلد ==="
+          ls -la
+          if [ ! -f "gradlew" ]; then
+            echo "⚠️ gradlew مش موجود، هنولّده..."
+            gradle wrapper --gradle-version 8.11.1
+          fi
+
+          # 4. إنشاء ملف debug.keystore
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
-          # 4. البناء النهائي للـ APK
+          # 5. البناء النهائي للـ APK
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
