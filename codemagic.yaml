@@ -8,31 +8,56 @@ workflows:
     scripts:
       - name: Extract Zip and Build APK
         script: |
+          set -e  # يوقف السكريبت فورًا لو أي أمر فشل
+
           # 1. فك ضغط ملف الـ ZIP
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           unzip -o "$ZIP_FILE" -d unzipped_app
 
           # 2. تحديد المجلد الرئيسي للمشروع (اللي فيه package.json)
+          echo "=== كل ملفات package.json الموجودة ==="
+          find unzipped_app -maxdepth 3 -name "package.json"
+
           PACKAGE_FILE=$(find unzipped_app -maxdepth 3 -name "package.json" | head -n 1)
           PROJECT_ROOT=$(dirname "$PACKAGE_FILE")
+          echo "=== المسار المختار للمشروع ==="
+          echo "$PROJECT_ROOT"
           cd "$PROJECT_ROOT"
 
           # 3. تثبيت المكتبات وبناء موقع الويب
           npm install
           npm run build
 
-          # 4. تثبيت Capacitor وإضافة منصة أندرويد
+          # 4. التأكد إن dist اتعمل فعلاً
+          echo "=== محتويات المجلد بعد الـ build ==="
+          ls -la
+
+          if [ ! -d "dist" ]; then
+            echo "❌ مجلد dist مش موجود! هدور على مجلد بديل (build)..."
+            if [ -d "build" ]; then
+              echo "✅ لقيت مجلد build بدل dist، هعمل نسخة باسم dist"
+              cp -r build dist
+            else
+              echo "❌ فشل: لا يوجد dist ولا build بعد npm run build"
+              exit 1
+            fi
+          fi
+
+          echo "✅ dist موجود، محتوياته:"
+          ls -la dist
+
+          # 5. تثبيت Capacitor وإضافة منصة أندرويد
           npm install @capacitor/core @capacitor/android
           npm install -D @capacitor/cli
           npx cap init "MyApp" "com.example.myapp" --web-dir=dist
           npx cap add android
           npx cap sync android
 
-          # 5. إنشاء ملف debug.keystore تلقائياً لحل مشكلة التوقيع
+          # 6. إنشاء ملف debug.keystore تلقائياً لحل مشكلة التوقيع
           cd android
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
-          # 6. البناء النهائي للـ APK
+          # 7. البناء النهائي للـ APK
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
