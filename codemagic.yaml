@@ -20,16 +20,19 @@ workflows:
             echo '{}' > "$f"
           done
 
-          # 3. تحديد المجلد الرئيسي الصحيح (اللي فيه فعلاً سكريبت build)
+          # 3. تحديد المجلد الرئيسي الصحيح
           echo "=== دور على package.json اللي فيه build script ==="
           PROJECT_ROOT=""
           while IFS= read -r pkg; do
+            ABS_PATH="$(pwd)/$pkg"
             HAS_BUILD=$(node -e "
+              const fs = require('fs');
               try {
-                const p = require('$pkg');
+                const content = fs.readFileSync(process.argv[1], 'utf8');
+                const p = JSON.parse(content);
                 console.log(p.scripts && p.scripts.build ? 'yes' : 'no');
               } catch(e) { console.log('no'); }
-            ")
+            " "$ABS_PATH")
             echo "فحص: $pkg -> $HAS_BUILD"
             if [ "$HAS_BUILD" = "yes" ]; then
               PROJECT_ROOT=$(dirname "$pkg")
