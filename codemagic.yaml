@@ -4,6 +4,7 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
+      java: 21
       node: 20
     scripts:
       - name: Extract Zip and Build APK
@@ -14,56 +15,41 @@ workflows:
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           unzip -o "$ZIP_FILE" -d unzipped_app
 
-          # 2. تصليح كل نسخ firebase-applet-config.json الفاضية/التالفة في أي مكان بالمشروع
-          echo "=== البحث عن firebase-applet-config.json وتصليحه ==="
+          # 2. تصليح كل نسخ firebase-applet-config.json
           find unzipped_app -name "firebase-applet-config.json" | while read -r f; do
-            echo "تصليح: $f"
             echo '{}' > "$f"
           done
 
           # 3. تحديد المجلد الرئيسي للمشروع
-          echo "=== كل ملفات package.json الموجودة ==="
-          find unzipped_app -maxdepth 3 -name "package.json"
-
           PACKAGE_FILE=$(find unzipped_app -maxdepth 3 -name "package.json" | head -n 1)
           PROJECT_ROOT=$(dirname "$PACKAGE_FILE")
-          echo "=== المسار المختار للمشروع ==="
-          echo "$PROJECT_ROOT"
           cd "$PROJECT_ROOT"
 
           # 4. تثبيت المكتبات وبناء موقع الويب
           npm install
           npm run build
 
-          # 5. التأكد إن dist اتعمل فعلاً
-          echo "=== محتويات المجلد بعد الـ build ==="
-          ls -la
-
           if [ ! -d "dist" ]; then
-            echo "❌ مجلد dist مش موجود! هدور على مجلد بديل (build)..."
             if [ -d "build" ]; then
               cp -r build dist
             else
-              echo "❌ فشل: لا يوجد dist ولا build بعد npm run build"
+              echo "❌ فشل: لا يوجد dist ولا build"
               exit 1
             fi
           fi
 
-          echo "✅ dist موجود، محتوياته:"
-          ls -la dist
-
-          # 6. تثبيت Capacitor وإضافة منصة أندرويد
+          # 5. تثبيت Capacitor وإضافة منصة أندرويد
           npm install @capacitor/core @capacitor/android
           npm install -D @capacitor/cli
           npx cap init "MyApp" "com.example.myapp" --web-dir=dist
           npx cap add android
           npx cap sync android
 
-          # 7. إنشاء ملف debug.keystore تلقائياً
+          # 6. إنشاء ملف debug.keystore تلقائياً
           cd android
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
-          # 8. البناء النهائي للـ APK
+          # 7. البناء النهائي للـ APK
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
