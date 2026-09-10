@@ -1,29 +1,39 @@
 workflows:
   android-workflow:
     name: Native Android Build
-    max_build_duration: 30
+    max_build_duration: 60
     instance_type: mac_mini_m1
+    environment:
+      node: 20
     scripts:
-      - name: Extract Zip and Build Native APK
+      - name: Extract Zip and Build APK
         script: |
           # 1. فك ضغط ملف الـ ZIP
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           unzip -o "$ZIP_FILE" -d unzipped_app
 
-          # 2. تحديد المجلد الرئيسي للمشروع
-          SETTINGS_FILE=$(find unzipped_app -name "settings.gradle.kts" -o -name "settings.gradle" | head -n 1)
-          PROJECT_ROOT=$(dirname "$SETTINGS_FILE")
+          # 2. تحديد المجلد الرئيسي للمشروع (اللي فيه package.json)
+          PACKAGE_FILE=$(find unzipped_app -maxdepth 3 -name "package.json" | head -n 1)
+          PROJECT_ROOT=$(dirname "$PACKAGE_FILE")
           cd "$PROJECT_ROOT"
 
-          # 3. تحديث إصدار Gradle لـ 9.3.1 (باستخدام الـ wrapper الموجود في المشروع)
-          chmod +x gradlew
-          sed -i '' 's/gradle-.*-bin.zip/gradle-9.3.1-bin.zip/g' gradle/wrapper/gradle-wrapper.properties 2>/dev/null || true
-          ./gradlew wrapper --gradle-version 9.3.1
+          # 3. تثبيت المكتبات وبناء موقع الويب
+          npm install
+          npm run build
 
-          # 4. إنشاء ملف debug.keystore تلقائياً لحل مشكلة التوقيع
+          # 4. تثبيت Capacitor وإضافة منصة أندرويد
+          npm install @capacitor/core @capacitor/android
+          npm install -D @capacitor/cli
+          npx cap init "MyApp" "com.example.myapp" --web-dir=dist
+          npx cap add android
+          npx cap sync android
+
+          # 5. إنشاء ملف debug.keystore تلقائياً لحل مشكلة التوقيع
+          cd android
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
-          # 5. البناء النهائي للـ APK
+          # 6. البناء النهائي للـ APK
+          chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
