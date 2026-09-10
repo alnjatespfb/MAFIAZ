@@ -5,9 +5,8 @@ workflows:
     instance_type: mac_mini_m1
     environment:
       java: 21
-      node: 20
     scripts:
-      - name: Extract Zip and Build APK
+      - name: Extract Zip and Build Native APK
         script: |
           set -e
 
@@ -15,15 +14,21 @@ workflows:
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           unzip -o "$ZIP_FILE" -d unzipped_app
 
-          # 2. طباعة كل ملفات package.json ومحتواها للتشخيص
-          echo "=== كل ملفات package.json وموقعها ومحتواها ==="
-          find unzipped_app -not -path "*/node_modules/*" -name "package.json" | while read -r f; do
-            echo "----- $f -----"
-            cat "$f"
-            echo ""
-          done
+          # 2. تحديد المجلد الرئيسي للمشروع
+          SETTINGS_FILE=$(find unzipped_app -name "settings.gradle.kts" -o -name "settings.gradle" | head -n 1)
+          echo "=== ملف settings.gradle الموجود ==="
+          echo "$SETTINGS_FILE"
 
-          # نوقف هنا عمدًا عشان نشوف النتيجة فورًا
-          exit 1
+          PROJECT_ROOT=$(dirname "$SETTINGS_FILE")
+          echo "=== مسار المشروع ==="
+          echo "$PROJECT_ROOT"
+          cd "$PROJECT_ROOT"
+
+          # 3. إنشاء ملف debug.keystore
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+          # 4. البناء النهائي للـ APK
+          chmod +x gradlew
+          ./gradlew assembleDebug
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
