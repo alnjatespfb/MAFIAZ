@@ -20,10 +20,29 @@ workflows:
             echo '{}' > "$f"
           done
 
-          # 3. تحديد المجلد الرئيسي للمشروع
-          PACKAGE_FILE=$(find unzipped_app -maxdepth 3 -name "package.json" | head -n 1)
-          PROJECT_ROOT=$(dirname "$PACKAGE_FILE")
-          echo "=== المسار المختار ==="
+          # 3. تحديد المجلد الرئيسي الصحيح (اللي فيه فعلاً سكريبت build)
+          echo "=== دور على package.json اللي فيه build script ==="
+          PROJECT_ROOT=""
+          while IFS= read -r pkg; do
+            HAS_BUILD=$(node -e "
+              try {
+                const p = require('$pkg');
+                console.log(p.scripts && p.scripts.build ? 'yes' : 'no');
+              } catch(e) { console.log('no'); }
+            ")
+            echo "فحص: $pkg -> $HAS_BUILD"
+            if [ "$HAS_BUILD" = "yes" ]; then
+              PROJECT_ROOT=$(dirname "$pkg")
+              break
+            fi
+          done < <(find unzipped_app -not -path "*/node_modules/*" -name "package.json")
+
+          if [ -z "$PROJECT_ROOT" ]; then
+            echo "❌ فشل: لا يوجد أي package.json فيه سكريبت build"
+            exit 1
+          fi
+
+          echo "=== المسار الصحيح المختار ==="
           echo "$PROJECT_ROOT"
           cd "$PROJECT_ROOT"
 
