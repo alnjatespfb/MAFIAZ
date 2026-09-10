@@ -11,21 +11,17 @@ workflows:
         script: |
           set -e
 
-          # 1. فك ضغط ملف الـ ZIP
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           unzip -o "$ZIP_FILE" -d unzipped_app
 
-          # 2. تصليح كل نسخ firebase-applet-config.json
           find unzipped_app -name "firebase-applet-config.json" | while read -r f; do
             echo '{}' > "$f"
           done
 
-          # 3. تحديد المجلد الرئيسي للمشروع
           PACKAGE_FILE=$(find unzipped_app -maxdepth 3 -name "package.json" | head -n 1)
           PROJECT_ROOT=$(dirname "$PACKAGE_FILE")
           cd "$PROJECT_ROOT"
 
-          # 4. تثبيت المكتبات وبناء موقع الويب
           npm install
           npm run build
 
@@ -38,18 +34,29 @@ workflows:
             fi
           fi
 
-          # 5. تثبيت Capacitor وإضافة منصة أندرويد
           npm install @capacitor/core @capacitor/android
           npm install -D @capacitor/cli
           npx cap init "MyApp" "com.example.myapp" --web-dir=dist
           npx cap add android
           npx cap sync android
 
-          # 6. إنشاء ملف debug.keystore تلقائياً
+          # حل تعارض نسخ Kotlin المكررة
+          cat >> android/build.gradle << 'EOF'
+
+          allprojects {
+              configurations.all {
+                  resolutionStrategy {
+                      force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24'
+                  }
+              }
+          }
+          EOF
+
           cd android
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
-          # 7. البناء النهائي للـ APK
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
