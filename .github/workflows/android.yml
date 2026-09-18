@@ -40,8 +40,12 @@ jobs:
         PROJECT_ROOT=$(dirname "$SETTINGS_FILE")
         cd "$PROJECT_ROOT"
 
-        # 3. إنشاء ملف debug.keystore في مجلد المشروع الرئيسي لحل الخطأ
+        # 3. إنشاء ملف debug.keystore ونسخه في الجذر ومجلد app
         keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+        
+        if [ -d "app" ]; then
+          cp debug.keystore app/debug.keystore
+        fi
 
         # 4. ضبط وتحديث Gradle Wrapper إلى 9.3.1
         if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
