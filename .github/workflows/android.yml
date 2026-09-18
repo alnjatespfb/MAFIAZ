@@ -3,7 +3,7 @@ name: Native Android Build
 on:
   push:
     branches: [ "main", "master" ]
-  workflow_dispatch: # يتيح لك تشغيل البناء يدوياً بضغطة زر
+  workflow_dispatch:
 
 jobs:
   build:
@@ -40,7 +40,10 @@ jobs:
         PROJECT_ROOT=$(dirname "$SETTINGS_FILE")
         cd "$PROJECT_ROOT"
 
-        # 3. ضبط وتحديث Gradle Wrapper إلى 9.3.1
+        # 3. إنشاء ملف debug.keystore في مجلد المشروع الرئيسي لحل الخطأ
+        keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+        # 4. ضبط وتحديث Gradle Wrapper إلى 9.3.1
         if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
           sed -i 's/gradle-.*-bin.zip/gradle-9.3.1-bin.zip/g' gradle/wrapper/gradle-wrapper.properties
         fi
@@ -54,7 +57,7 @@ jobs:
           chmod +x gradlew
         fi
 
-        # 4. بناء الـ APK (يمكنك تغيير assembleDebug إلى assembleRelease)
+        # 5. بناء الـ APK
         ./gradlew assembleDebug
 
     - name: Upload APK Artifact
