@@ -31,7 +31,14 @@ jobs:
         fi
         unzip -o "$ZIP_FILE" -d unzipped_app
 
-        # 2. تحديد المجلد الرئيسي للمشروع
+        # 2. إنشاء ملف debug.keystore وتوزيعه في كافة المسارات المحتملة
+        keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+        
+        # نسخ الملف إلى unzipped_app وجميع المجلدات داخلها
+        cp debug.keystore unzipped_app/debug.keystore
+        find unzipped_app -type d -exec cp debug.keystore {}/ \; 2>/dev/null || true
+
+        # 3. تحديد المجلد الرئيسي للمشروع
         SETTINGS_FILE=$(find unzipped_app -name "settings.gradle.kts" -o -name "settings.gradle" | head -n 1)
         if [ -z "$SETTINGS_FILE" ]; then
           echo "❌ لم يتم العثور على ملف settings.gradle!"
@@ -39,13 +46,6 @@ jobs:
         fi
         PROJECT_ROOT=$(dirname "$SETTINGS_FILE")
         cd "$PROJECT_ROOT"
-
-        # 3. إنشاء ملف debug.keystore ونسخه في الجذر ومجلد app
-        keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-        
-        if [ -d "app" ]; then
-          cp debug.keystore app/debug.keystore
-        fi
 
         # 4. ضبط وتحديث Gradle Wrapper إلى 9.3.1
         if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
